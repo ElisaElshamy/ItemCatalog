@@ -1,0 +1,41 @@
+<html>
+
+<body>
+
+<h1>{{genre.name}}</h1>
+
+<!-- FLASHING MESSAGE -->
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+
+<ul>
+{% for message in messages %}
+  <li><strong>{{message}}</strong></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endwith %}
+
+
+{% for v in videoGames %}
+
+<div>
+
+<p>{{v.title}}</p>
+
+<p>{{v.description}}</p>
+
+<p> {{v.boxart}} </p>
+
+<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
+
+</br>
+<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
+
+</div>
+
+
+{% endfor %}
+</body>
+
+</html>
