@@ -1,4 +1,4 @@
-#Import necessary libraries and frameworks
+# Import necessary libraries and frameworks
 from flask import Flask, render_template, request, redirect, jsonify, url_for, flash
 from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
@@ -11,7 +11,7 @@ from oauth2client.client import FlowExchangeError
 import httplib2
 import json
 from flask import make_response
-#import requests
+import requests
 
 app = Flask(__name__)
 
@@ -30,17 +30,18 @@ session = DBSession()
 # Create anti-forgery state token
 @app.route('/login')
 def showLogin():
-	#Generates a random string
-	state = ''.join(random.choice(string.ascii_uppercase + string.digits)
-	                for x in xrange(32))
-	login_session['state'] = state
+    # Generates a random string
+    state = ''.join(random.choice(string.ascii_uppercase + string.digits)
+                    for x in xrange(32))
+    login_session['state'] = state
 
-	return render_template('login.html', STATE=state)
+    return render_template('login.html', STATE=state)
 
 
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
-    # Validate state token
+    # Validate state token - checks if the state string created in showLogin
+    # matches the one from the get request
     if request.args.get('state') != login_session['state']:
         response = make_response(json.dumps('Invalid state parameter.'), 401)
         response.headers['Content-Type'] = 'application/json'
@@ -57,17 +58,16 @@ def gconnect():
         response = make_response(
             json.dumps('Failed to upgrade the authorization code.'), 401)
         response.headers['Content-Type'] = 'application/json'
+
         return response
 
-	# Check that the access token is valid.
-	access_token = credentials.access_token
-	url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
-	       % access_token)
-	h = httplib2.Http()
-	result = json.loads(h.request(url, 'GET')[1])
-	# req = h.request(url, 'GET')[1]
-	# req_json = req.decode('utf8').replace("'", '"')
-	# result = json.loads(req_json)
+    # Check that the access token is valid.
+    access_token = credentials.access_token
+    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s' %
+           access_token)
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+
     # If there was an error in the access token info, abort.
     if result.get('error') is not None:
         response = make_response(json.dumps(result.get('error')), 500)
@@ -93,8 +93,8 @@ def gconnect():
     stored_access_token = login_session.get('access_token')
     stored_gplus_id = login_session.get('gplus_id')
     if stored_access_token is not None and gplus_id == stored_gplus_id:
-        response = make_response(json.dumps('Current user is already connected.'),
-                                 200)
+        response = make_response(json.dumps(
+            'Current user is already connected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -124,18 +124,21 @@ def gconnect():
     print "done!"
     return output
 
+
 @app.route('/gdisconnect')
 def gdisconnect():
     access_token = login_session.get('access_token')
     if access_token is None:
         print 'Access Token is None'
-        response = make_response(json.dumps('Current user not connected.'), 401)
+        response = make_response(json.dumps(
+            'Current user not connected.'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
     print 'In gdisconnect access token is %s', access_token
     print 'User name is: '
     print login_session['username']
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session[
+        'access_token']
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
     print 'result is '
@@ -150,40 +153,41 @@ def gdisconnect():
         response.headers['Content-Type'] = 'application/json'
         return response
     else:
-        response = make_response(json.dumps('Failed to revoke token for given user.', 400))
+        response = make_response(json.dumps(
+            'Failed to revoke token for given user.', 400))
         response.headers['Content-Type'] = 'application/json'
         return response
 
 
-#JSON API
+# JSON API
 @app.route('/gaming/<int:genre_id>/games/JSON')
 def gamingJSON(genre_id):
-	genre = session.query(Genre).filter_by(id=genre_id).one()
-	games = session.query(Games).filter_by(
-	    genre_id=genre_id).all()
+    genre = session.query(Genre).filter_by(id=genre_id).one()
+    games = session.query(Games).filter_by(
+        genre_id=genre_id).all()
 
-	return jsonify(VideoGames=[vg.serialize for vg in games])
+    return jsonify(VideoGames=[vg.serialize for vg in games])
 
 
-#Home pages - available to all users
+# Home pages - available to all users
 @app.route('/')
 @app.route('/gaming')
 def showGames():
-	genres = session.query(Genre).order_by(asc(Genre.name))
-	# if 'username' not in login_session:
-	# return render_template('publicrestaurants.html', restaurants=restaurants)
-	# else:
-	return render_template('gaming.html', genres=genres)
+    genres = session.query(Genre).order_by(asc(Genre.name))
+    # if 'username' not in login_session:
+    # return render_template('publicrestaurants.html', restaurants=restaurants)
+    # else:
+    return render_template('gaming.html', genres=genres)
 
 
-#Authenticated users can add new genres
+# Authenticated users can add new genres
 @app.route('/gaming/genre/new', methods=['GET', 'POST'])
 def newGamingGenre():
     # if 'username' not in login_session:
     #     return redirect('/login')
     if request.method == 'POST':
         newGenre = Genre(name=request.form['name'])
-        	#name=request.form['name'], user_id=login_session['user_id'])
+        # name=request.form['name'], user_id=login_session['user_id'])
         session.add(newGenre)
         flash('New Genre %s Successfully Added' % newGenre.name)
         session.commit()
@@ -192,114 +196,120 @@ def newGamingGenre():
         return render_template('new_genre.html')
 
 
-#Authenticated users can edit a genre
+# Authenticated users can edit a genre
 @app.route('/gaming/genre/<int:genre_id>/edit', methods=['GET', 'POST'])
 def editGamingGenre(genre_id):
-	editedGenre = session.query(
-	    Genre).filter_by(id=genre_id).one()
-	# if 'username' not in login_session:
-	#     return redirect('/login')
-	# if editedRestaurant.user_id != login_session['user_id']:
-	#     return "<script>function myFunction() {alert('You are not authorized to edit this restaurant. Please create your own restaurant in order to edit.');}</script><body onload='myFunction()''>"
-	if request.method == 'POST':
-	    if request.form['name']:
-	        editedGenre.name = request.form['name']
-	        flash('Genre Successfully Edited %s' % editedGenre.name)
-	        return redirect(url_for('showGames'))
-	else:
-	    return render_template('edit_genre.html', genre=editedGenre)
+    editedGenre = session.query(
+        Genre).filter_by(id=genre_id).one()
+    # if 'username' not in login_session:
+    #     return redirect('/login')
+    # if editedRestaurant.user_id != login_session['user_id']:
+    # return "<script>function myFunction() {alert('You are not authorized to
+    # edit this restaurant. Please create your own restaurant in order to
+    # edit.');}</script><body onload='myFunction()''>"
+    if request.method == 'POST':
+        if request.form['name']:
+            editedGenre.name = request.form['name']
+            flash('Genre Successfully Edited %s' % editedGenre.name)
+            return redirect(url_for('showGames'))
+    else:
+        return render_template('edit_genre.html', genre=editedGenre)
 
 
-#Authenticated users can delete a genre
+# Authenticated users can delete a genre
 @app.route('/gaming/genre/<int:genre_id>/delete', methods=['GET', 'POST'])
 def deleteGamingGenre(genre_id):
 
-	genreToDelete = session.query(
-	    Genre).filter_by(id=genre_id).one()
-	# if 'username' not in login_session:
-	#     return redirect('/login')
-	# if restaurantToDelete.user_id != login_session['user_id']:
-	#     return "<script>function myFunction() {alert('You are not authorized to delete this restaurant. Please create your own restaurant in order to delete.');}</script><body onload='myFunction()''>"
-	if request.method == 'POST':
-	    session.delete(genreToDelete)
-	    flash('%s Successfully Deleted' % genreToDelete.name)
-	    session.commit()
-	    return redirect(url_for('showGames'))
-	else:
-	    return render_template('delete_genre.html', genre=genreToDelete)
+    genreToDelete = session.query(
+        Genre).filter_by(id=genre_id).one()
+    # if 'username' not in login_session:
+    #     return redirect('/login')
+    # if restaurantToDelete.user_id != login_session['user_id']:
+    # return "<script>function myFunction() {alert('You are not authorized to
+    # delete this restaurant. Please create your own restaurant in order to
+    # delete.');}</script><body onload='myFunction()''>"
+    if request.method == 'POST':
+        session.delete(genreToDelete)
+        flash('%s Successfully Deleted' % genreToDelete.name)
+        session.commit()
+        return redirect(url_for('showGames'))
+    else:
+        return render_template('delete_genre.html', genre=genreToDelete)
 
 
-#Genre pages - available to all users
+# Genre pages - available to all users
 @app.route('/gaming/genre/<int:genre_id>')
 @app.route('/gaming/genre/<int:genre_id>/games')
 def showGamingGenre(genre_id):
-	genre = session.query(Genre).filter_by(id=genre_id).one()
-	videoGames = session.query(Games).filter_by(genre_id=genre.id)
+    genre = session.query(Genre).filter_by(id=genre_id).one()
+    videoGames = session.query(Games).filter_by(genre_id=genre.id)
 
-	return render_template(
-	    'genre.html', genre=genre, videoGames=videoGames, genre_id=genre_id)
+    return render_template(
+        'genre.html', genre=genre, videoGames=videoGames, genre_id=genre_id)
 
 
-
-#Authenticated users can add new game to a genre
+# Authenticated users can add new game to a genre
 @app.route('/gaming/<int:genre_id>/game/new', methods=['GET', 'POST'])
 def newGenreGame(genre_id):
-	if request.method == 'POST':
-	    newVideoGame = Games(title=request.form['title'], description=request.form[
-	                       'description'], boxart=request.form['boxart'], genre_id=genre_id)
-	    session.add(newVideoGame)
-	    session.commit()
-	    flash("Video Game Added!")
-	    return redirect(url_for('showGamingGenre', genre_id=genre_id))
-	else:
-	    return render_template('new_game.html', genre_id=genre_id)
+    if request.method == 'POST':
+        newVideoGame = Games(title=request.form['title'], description=request.form[
+            'description'], boxart=request.form['boxart'], genre_id=genre_id)
+        session.add(newVideoGame)
+        session.commit()
+        flash("Video Game Added!")
+        return redirect(url_for('showGamingGenre', genre_id=genre_id))
+    else:
+        return render_template('new_game.html', genre_id=genre_id)
 
 
-#Authenticated users can edit a game in a genre
+# Authenticated users can edit a game in a genre
 @app.route('/gaming/<int:genre_id>/<int:game_id>/edit', methods=['GET', 'POST'])
 def editGenreGame(genre_id, game_id):
-	# if 'username' not in login_session:
-	#     return redirect('/login')
-	editedGame = session.query(Games).filter_by(id=game_id).one()
-	genre = session.query(Genre).filter_by(id=genre_id).one()
-	# if login_session['user_id'] != restaurant.user_id:
-	#     return "<script>function myFunction() {alert('You are not authorized to edit menu items to this restaurant. Please create your own restaurant in order to edit items.');}</script><body onload='myFunction()''>"
-	if request.method == 'POST':
-	    if request.form['title']:
-	        editedGame.title = request.form['title']
-	    if request.form['description']:
-	        editedGame.description = request.form['description']
-	    if request.form['boxart']:
-	        editedGame.boxart = request.form['boxart']
+    # if 'username' not in login_session:
+    #     return redirect('/login')
+    editedGame = session.query(Games).filter_by(id=game_id).one()
+    genre = session.query(Genre).filter_by(id=genre_id).one()
+    # if login_session['user_id'] != restaurant.user_id:
+    # return "<script>function myFunction() {alert('You are not authorized to
+    # edit menu items to this restaurant. Please create your own restaurant in
+    # order to edit items.');}</script><body onload='myFunction()''>"
+    if request.method == 'POST':
+        if request.form['title']:
+            editedGame.title = request.form['title']
+        if request.form['description']:
+            editedGame.description = request.form['description']
+        if request.form['boxart']:
+            editedGame.boxart = request.form['boxart']
 
-	    session.add(editedGame)
-	    session.commit()
-	    flash('Video Game Successfully Edited')
-	    return redirect(url_for('showGamingGenre', genre_id=genre_id))
-	else:
-	    return render_template('edit_game.html', genre_id=genre_id, game_id=game_id, videoGame=editedGame)
+        session.add(editedGame)
+        session.commit()
+        flash('Video Game Successfully Edited')
+        return redirect(url_for('showGamingGenre', genre_id=genre_id))
+    else:
+        return render_template('edit_game.html', genre_id=genre_id, game_id=game_id, videoGame=editedGame)
 
 
-#Authenticated users can delete a game in a genre
+# Authenticated users can delete a game in a genre
 @app.route('/gaming/<int:genre_id>/<int:game_id>/delete', methods=['GET', 'POST'])
 def deleteGenreGame(genre_id, game_id):
-		# if 'username' not in login_session:
-	#       return redirect('/login')
-	genre = session.query(Genre).filter_by(id=genre_id).one()
-	gameToDelete = session.query(Games).filter_by(id=game_id).one()
-	# if login_session['user_id'] != restaurant.user_id:
-	#     return "<script>function myFunction() {alert('You are not authorized to delete menu items to this restaurant. Please create your own restaurant in order to delete items.');}</script><body onload='myFunction()''>"
-	if request.method == 'POST':
-	    session.delete(gameToDelete)
-	    session.commit()
-	    flash('Video Game Successfully Deleted')
-	    return redirect(url_for('showGamingGenre', genre_id=genre_id))
-	else:
-	    return render_template('delete_game.html', videoGame=gameToDelete)
-
+    # if 'username' not in login_session:
+    # return redirect('/login')
+    genre = session.query(Genre).filter_by(id=genre_id).one()
+    gameToDelete = session.query(Games).filter_by(id=game_id).one()
+    # if login_session['user_id'] != restaurant.user_id:
+    # return "<script>function myFunction() {alert('You are not authorized to
+    # delete menu items to this restaurant. Please create your own restaurant
+    # in order to delete items.');}</script><body onload='myFunction()''>"
+    if request.method == 'POST':
+        session.delete(gameToDelete)
+        session.commit()
+        flash('Video Game Successfully Deleted')
+        return redirect(url_for('showGamingGenre', genre_id=genre_id))
+    else:
+        return render_template('delete_game.html', videoGame=gameToDelete)
 
 
 if __name__ == '__main__':
-	app.secret_key = 'super_secret_key'
-   	app.debug = True
-   	app.run(host='0.0.0.0', port=5000)
+    app.secret_key = 'super_secret_key'
+    app.debug = True
+    app.run(host='0.0.0.0', port=5000)
