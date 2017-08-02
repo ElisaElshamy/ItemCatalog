@@ -27,11 +27,13 @@
 
 <p> {{v.boxart}} </p>
 
-<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
+	{% if username != '' %}
 
-</br>
-<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
+		<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
 
+		</br>
+		<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
+	{% endif %}
 </div>
 
 

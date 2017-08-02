@@ -3,8 +3,7 @@
 {% include "header.html" %}
 	<div class="row top-menu">
 		<div class="col-md-10"></div>
-		<div class="col-md-2 text-right">
-					</div>
+		<div class="col-md-2 text-right"></div>
 	</div>
 	<div class="row divider blue">
 		<div class="col-md-12"></div>
@@ -33,11 +32,13 @@
 	<div class="row padding-top padding-bottom">
 		<div class="col-md-1"></div>
 		<div class="col-md-10 padding-none">
-			<a href="{{url_for('newGamingGenre')}}">
-				<button class="btn btn-default" id="new-genre">
-					<span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span>Add Genre
-				</button>
-			</a>
+			{% if username != '' %}
+				<a href="{{url_for('newGamingGenre')}}">
+					<button class="btn btn-default" id="new-genre">
+						<span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span>Add Genre
+					</button>
+				</a>
+			{% endif %}
 		</div>
 		<div class="col-md-1"></div>
 	</div>
@@ -47,9 +48,11 @@
 				<div class="col-md-1"></div>
 					<div class="col-md-10 genres-list">
 						<h3>{{genre.name}}</h3>
-						<a href='{{url_for('editGamingGenre', genre_id = genre.id) }}'>Edit</a>
-						</br>
-						<a href = '{{url_for('deleteGamingGenre', genre_id = genre.id) }}'>Delete</a>
+						{% if username != '' %}
+							<a href='{{url_for('editGamingGenre', genre_id = genre.id) }}'>Edit</a>
+							</br>
+							<a href = '{{url_for('deleteGamingGenre', genre_id = genre.id) }}'>Delete</a>
+						{% endif %}
 					</div>
 				<div class="col-md-1"></div>
 			</div>
