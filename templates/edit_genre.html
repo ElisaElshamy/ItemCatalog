@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 {% block content %}
 	{% include "header.html" %}
-	{% if username != '' %}
+	{% if user_id == genre.creator_id %}
 		<div class="row divider green">
 			<div class="col-md-12"></div>
 		</div>
@@ -27,7 +27,9 @@
 				</form>
 			</div>
 		</div>
-	{% else %}
+	{% elif user_id == 0 %}
 		<div>Access Denied.  Click the Google Sign in button to log into an existing Google account or to create one!</div>
+	{% else %}
+		<div>Access Denied.  You are not the creator of this genre.</div>
 	{% endif %}
 {% endblock %}

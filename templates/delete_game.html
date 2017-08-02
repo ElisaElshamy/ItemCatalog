@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 {% block content %}
 {% include "header.html" %}
-	{% if username != '' %}
+	{% if user_id == genre.creator_id %}
 		<h2> Are you sure you want to delete {{videoGame.title}}? </h2>
 
 		<form action="#" method = 'post'>
@@ -14,8 +14,10 @@
 			</a>
 
 		</form>
-	{% else %}
+	{% elif user_id == 0 %}
 		<div>Access Denied.  Click the Google Sign in button to log into an existing Google account or to create one!</div>
+	{% else %}
+		<div>Access Denied.  You are not the creator of this game.</div>
 	{% endif %}
 
 {% endblock %}

@@ -16,25 +16,38 @@
 {% endif %}
 {% endwith %}
 
+	<div class="row padding-top padding-bottom">
+		<div class="col-md-1"></div>
+		<div class="col-md-10 padding-none">
+			{% if user_id == genre.creator_id %}
+				<a href="{{url_for('newGenreGame', genre_id = genre.id)}}">
+					<button class="btn btn-default" id="new-genre-game">
+						<span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span>Add Game
+					</button>
+				</a>
+			{% endif %}
+		</div>
+		<div class="col-md-1"></div>
+	</div>
 
 {% for v in videoGames %}
 
-<div>
+	<div>
 
-<p>{{v.title}}</p>
+		<p>{{v.title}}</p>
 
-<p>{{v.description}}</p>
+		<p>{{v.description}}</p>
 
-<p> {{v.boxart}} </p>
+		<p> {{v.boxart}} </p>
 
-	{% if username != '' %}
+		{% if user_id == v.creator_id %}
 
-		<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
+			<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
 
-		</br>
-		<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
-	{% endif %}
-</div>
+			</br>
+			<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
+		{% endif %}
+	</div>
 
 
 {% endfor %}
