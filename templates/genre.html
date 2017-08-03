@@ -1,28 +1,33 @@
-<html>
+{% extends "main.html" %}
+{% block content %}
+{% include "header.html" %}
 
-<body>
-
-<h1>{{genre.name}}</h1>
-
-<!-- FLASHING MESSAGE -->
-{% with messages = get_flashed_messages() %}
-{% if messages %}
-
-<ul>
-{% for message in messages %}
-  <li><strong>{{message}}</strong></li>
-  {% endfor %}
-</ul>
-{% endif %}
-{% endwith %}
-
-	<div class="row padding-top padding-bottom">
+	<div class="row">
 		<div class="col-md-1"></div>
-		<div class="col-md-10 padding-none">
+		<div class="col-md-10">
+			<h1 class="genre-name">{{genre.name}}</h1>
+		</div>
+		<div class="col-md-1"></div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-1"></div>
+		<div class="col-md-10">
+			<!-- FLASHING MESSAGE -->
+			{% with messages = get_flashed_messages() %}
+			{% if messages %}
+
+				<div class="alert alert-success" role="alert">
+					{% for message in messages %}
+				  		{{message}}
+				  	{% endfor %}
+				</div>
+			{% endif %}
+			{% endwith %}
 			{% if user_id == genre.creator_id %}
 				<a href="{{url_for('newGenreGame', genre_id = genre.id)}}">
 					<button class="btn btn-default" id="new-genre-game">
-						<span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span>Add Game
+						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Game
 					</button>
 				</a>
 			{% endif %}
@@ -30,27 +35,29 @@
 		<div class="col-md-1"></div>
 	</div>
 
-{% for v in videoGames %}
+	<div class="row">
+		<div class="col-md-2"></div>
+		<div class="col-md-8">
+			{% for v in videoGames %}
 
-	<div>
+				<div>
 
-		<p>{{v.title}}</p>
+					<h3>{{v.title}}</h3>
 
-		<p>{{v.description}}</p>
+					<p>{{v.description}}</p>
 
-		<p> {{v.boxart}} </p>
+					<p> {{v.boxart}} </p>
 
-		{% if user_id == v.creator_id %}
+					{% if user_id == v.creator_id %}
 
-			<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
+						<a href='{{url_for('editGenreGame', genre_id = genre.id, game_id = v.id) }}'>Edit</a>
 
-			</br>
-			<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
-		{% endif %}
+						</br>
+						<a href = '{{url_for('deleteGenreGame', genre_id = genre.id, game_id = v.id ) }}'>Delete</a>
+					{% endif %}
+				</div>
+			{% endfor %}
+		</div>
+		<div class="col-md-2"></div>
 	</div>
-
-
-{% endfor %}
-</body>
-
-</html>
+{% endblock %}

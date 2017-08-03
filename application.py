@@ -1,6 +1,6 @@
 # Import necessary libraries and frameworks
 from flask import Flask, render_template, request, redirect, jsonify, url_for, flash
-from sqlalchemy import create_engine, asc
+from sqlalchemy import create_engine, asc, desc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, User, Genre, Games
 from flask import session as login_session
@@ -18,7 +18,7 @@ app = Flask(__name__)
 
 CLIENT_ID = json.loads(
     open('client_secrets.json', 'r').read())['web']['client_id']
-APPLICATION_NAME = "Restaurant Menu Application"
+APPLICATION_NAME = "Video Game Catalog"
 
 engine = create_engine('sqlite:///videogames.db')
 Base.metadata.bind = engine
@@ -32,15 +32,18 @@ session = DBSession()
 @app.route('/gaming')
 def showGames():
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     # Generates a random string as a anti-forgery state token
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                         for x in xrange(32))
     login_session['state'] = state
     genres = session.query(Genre).order_by(asc(Genre.name))
-    return render_template('gaming.html', genres=genres, user_id = user_id, STATE=state)
+    games = session.query(Games).order_by(desc(Games.id)).limit(5)
+    return render_template('gaming.html', genres=genres, games=games, user_id = user_id, user_pic=user_pic, STATE=state)
 
 
 @app.route('/gconnect', methods=['POST'])
@@ -125,27 +128,11 @@ def gconnect():
         user_id = createUser(login_session)
     login_session['user_id'] = user_id
 
-    stuff = ''
-    stuff += login_session['username']
-    stuff += '  |  '
-    stuff += login_session['picture']
-    stuff += '  |  '
-    stuff += login_session['email']
-    stuff += '  |  '
-    stuff += str(login_session['user_id'])
-    stuff += '  |  '
-
-    print stuff
-
     output = ''
-    output += '<h1>Welcome, '
+    output += '<h4>Welcome, '
     output += login_session['username']
-    output += '!</h1>'
-    output += '<img src="'
-    output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
-    flash("you are now logged in as %s" % login_session['username'])
-    print "done!"
+    output += '!</h4>'
+    flash('You are logged in as %s' % login_session['username'])
     return output
 
 # User Helper Functions
@@ -195,6 +182,7 @@ def gdisconnect():
         response = make_response(json.dumps('Successfully disconnected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
+        
     else:
         response = make_response(json.dumps(
             'Failed to revoke token for given user.', 400))
@@ -217,8 +205,10 @@ def gamingJSON(genre_id):
 @app.route('/gaming/genre/new', methods=['GET', 'POST'])
 def newGamingGenre():
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     if request.method == 'POST':
         newGenre = Genre(name=request.form['name'], creator_id=user_id)
@@ -226,46 +216,54 @@ def newGamingGenre():
         flash('New Genre %s Successfully Added' % newGenre.name)
         session.commit()
         return redirect(url_for('showGames'))
-    else:
-        return render_template('new_genre.html', user_id = user_id)
+
+    return render_template('new_genre.html', user_id = user_id, user_pic=user_pic)
 
 
 # Authenticated users can edit a genre
 @app.route('/gaming/genre/<int:genre_id>/edit', methods=['GET', 'POST'])
 def editGamingGenre(genre_id):
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     editedGenre = session.query(
         Genre).filter_by(id=genre_id).one()
 
-    if request.method == 'POST':
+    if request.method == 'POST' and request.form['submit'] == 'Save':
         if request.form['name']:
             editedGenre.name = request.form['name']
             flash('Genre Successfully Edited %s' % editedGenre.name)
             return redirect(url_for('showGames'))
-    else:
-        return render_template('edit_genre.html', genre=editedGenre, user_id=user_id)
+    elif request.method == 'POST' and request.form['submit'] == 'Cancel':
+        return redirect(url_for('showGames'))
+
+    return render_template('edit_genre.html', genre=editedGenre, user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can delete a genre
 @app.route('/gaming/genre/<int:genre_id>/delete', methods=['GET', 'POST'])
 def deleteGamingGenre(genre_id):
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     genreToDelete = session.query(
         Genre).filter_by(id=genre_id).one()
 
-    if request.method == 'POST':
+    if request.method == 'POST' and request.form['submit'] == 'Delete':
         session.delete(genreToDelete)
         flash('%s Successfully Deleted' % genreToDelete.name)
         session.commit()
         return redirect(url_for('showGames'))
-    else:
-        return render_template('delete_genre.html', genre=genreToDelete, user_id=user_id)
+    elif request.method == 'POST' and request.form['submit'] == 'Cancel':
+        return redirect(url_for('showGames'))
+
+    return render_template('delete_genre.html', genre=genreToDelete, user_id=user_id, user_pic=user_pic)
 
 
 # Genre pages - available to all users
@@ -273,21 +271,25 @@ def deleteGamingGenre(genre_id):
 @app.route('/gaming/genre/<int:genre_id>/games')
 def showGamingGenre(genre_id):
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
     genre = session.query(Genre).filter_by(id=genre_id).one()
     videoGames = session.query(Games).filter_by(genre_id=genre.id)
 
     return render_template(
-        'genre.html', genre=genre, videoGames=videoGames, genre_id=genre_id, user_id=user_id)
+        'genre.html', genre=genre, videoGames=videoGames, genre_id=genre_id, user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can add new game to a genre
 @app.route('/gaming/<int:genre_id>/game/new', methods=['GET', 'POST'])
 def newGenreGame(genre_id):
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     genre = session.query(Genre).filter_by(id=genre_id).one()
 
@@ -298,22 +300,24 @@ def newGenreGame(genre_id):
         session.commit()
         flash("Video Game Added!")
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
-    else:
-        return render_template('new_game.html', genre=genre, user_id=user_id)
+
+    return render_template('new_game.html', genre=genre, user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can edit a game in a genre
 @app.route('/gaming/<int:genre_id>/<int:game_id>/edit', methods=['GET', 'POST'])
 def editGenreGame(genre_id, game_id):
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     editedGame = session.query(Games).filter_by(id=game_id).one()
     genre = session.query(Genre).filter_by(id=genre_id).one()
     genres = session.query(Genre).order_by(asc(Genre.name))
 
-    if request.method == 'POST':
+    if request.method == 'POST' and request.form['submit'] == 'Save':
         if request.form['title']:
             editedGame.title = request.form['title']
         if request.form['description']:
@@ -327,27 +331,33 @@ def editGenreGame(genre_id, game_id):
         session.commit()
         flash('Video Game Successfully Edited')
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
-    else:
-        return render_template('edit_game.html', genres=genres, genre=genre, game_id=game_id, videoGame=editedGame, user_id=user_id)
+    elif request.method == 'POST' and request.form['submit'] == 'Cancel':
+        return redirect(url_for('showGamingGenre', genre_id=genre_id))
+    
+    return render_template('edit_game.html', genres=genres, genre=genre, game_id=game_id, videoGame=editedGame, user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can delete a game in a genre
 @app.route('/gaming/<int:genre_id>/<int:game_id>/delete', methods=['GET', 'POST'])
 def deleteGenreGame(genre_id, game_id):
     user_id = 0
+    user_pic = ''
     if 'user_id' in login_session:
         user_id = login_session['user_id']
+        user_pic = login_session['picture']
 
     genre = session.query(Genre).filter_by(id=genre_id).one()
     gameToDelete = session.query(Games).filter_by(id=game_id).one()
 
-    if request.method == 'POST':
+    if request.method == 'POST' and request.form['submit'] == 'Delete':
         session.delete(gameToDelete)
         session.commit()
         flash('Video Game Successfully Deleted')
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
-    else:
-        return render_template('delete_game.html', genre=genre, videoGame=gameToDelete, user_id=user_id)
+    elif request.method == 'POST' and request.form['submit'] == 'Cancel':
+        return redirect(url_for('showGamingGenre', genre_id=genre_id))
+
+    return render_template('delete_game.html', genre=genre, videoGame=gameToDelete, user_id=user_id, user_pic=user_pic)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,27 @@
+.profile-pic {
+	margin: 4px 0;
+	height: 60px;
+	border-radius: 50%;
+}
+
+.btn {
+	background-color: #563d7c !important;
+	color: #FFF !important;
+}
+
+.btn:hover {
+	background-color: #ccc !important;
+	color: #563d7c !important;
+}
+
+.genres-list {
+	border-right: 1px solid #563d7c;
+}
+
+.genre-name {
+	color: #563d7c;
+}
+
+.latest-games h1 {
+	color: #563d7c;
+}

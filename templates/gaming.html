@@ -1,61 +1,64 @@
 {% extends "main.html" %}
 {% block content %}
 {% include "header.html" %}
-	<div class="row top-menu">
-		<div class="col-md-10"></div>
-		<div class="col-md-2 text-right"></div>
-	</div>
-	<div class="row divider blue">
-		<div class="col-md-12"></div>
-	</div>
+<!--
 	<div class="row banner main">
 		<div class="col-md-1"></div>
 		<div class="col-md-11 padding-none">
 			<h1>Video Games</h1>
 		</div>
 	</div>
-
-<div class = 'flash'>
-		      {% with messages = get_flashed_messages() %}
-      {% if messages %}
-          
-        <ul>
-        {% for message in messages %}
-            <li> <strong> {{ message }} </strong> </li>
-        {% endfor %}
-        </ul>
-        {% endif %}
-    {% endwith %}
-
-</div>
+-->
 	
-	<div class="row padding-top padding-bottom">
+	<div class="row">
 		<div class="col-md-1"></div>
 		<div class="col-md-10 padding-none">
 			{% if user_id != 0 %}
 				<a href="{{url_for('newGamingGenre')}}">
 					<button class="btn btn-default" id="new-genre">
-						<span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span>Add Genre
+						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>Add Genre
 					</button>
 				</a>
 			{% endif %}
 		</div>
 		<div class="col-md-1"></div>
 	</div>
-	{% for genre in genres %}
-		<a href = "{{url_for('showGamingGenre', genre_id = genre.id)}}">
-			<div class="row">
-				<div class="col-md-1"></div>
-					<div class="col-md-10 genres-list">
-						<h3>{{genre.name}}</h3>
-						{% if user_id == genre.creator_id %}
-							<a href='{{url_for('editGamingGenre', genre_id = genre.id) }}'>Edit</a>
-							</br>
-							<a href = '{{url_for('deleteGamingGenre', genre_id = genre.id) }}'>Delete</a>
-						{% endif %}
-					</div>
-				<div class="col-md-1"></div>
-			</div>
-		</a>
-	{% endfor %}
+
+	<div class="row">
+		<div class="col-md-1"></div>
+		<div class="col-md-6 genres-list">
+			<!-- FLASHING MESSAGE -->
+			{% with messages = get_flashed_messages() %}
+			{% if messages %}
+
+				<div class="alert alert-success" role="alert">
+					{% for message in messages %}
+				  		{{message}}
+				  	{% endfor %}
+				</div>
+			{% endif %}
+			{% endwith %}
+
+			{% for genre in genres %}
+	
+				<a href = "{{url_for('showGamingGenre', genre_id = genre.id)}}">
+					<h3 class="genre-name">{{genre.name}}</h3>
+				</a>
+				{% if user_id == genre.creator_id %}
+					<a href='{{url_for('editGamingGenre', genre_id = genre.id) }}'>Edit</a>
+					</br>
+					<a href = '{{url_for('deleteGamingGenre', genre_id = genre.id) }}'>Delete</a>
+				{% endif %}
+			{% endfor %}
+		</div>
+		<div class="col-md-4 latest-games">
+			<h1>Latest Games</h1>
+				{% for game in games %}
+					<h4 class="game-title">{{game.title}}</h4>
+					<span class="game-genre">({{game.genre.name}})</span>
+				{% endfor %}
+		</div>
+		<div class="col-md-1"></div>
+	</div>
+	
 {% endblock %}
