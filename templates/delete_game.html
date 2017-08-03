@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 {% block content %}
 {% include "header.html" %}
-	{% if user_id == genre.creator_id %}
+	{% if user_id == videoGame.creator_id %}
 		<h2> Are you sure you want to delete {{videoGame.title}}? </h2>
 
 		<form action="#" method = 'post'>

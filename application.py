@@ -7,7 +7,8 @@ import requests
 from sqlalchemy import create_engine, asc, desc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, User, Genre, Games
-from flask import Flask, render_template, request, redirect, jsonify, url_for, flash
+from flask import Flask, render_template, request, redirect
+from flask import jsonify, url_for, flash
 from flask import session as login_session
 from flask import make_response
 from oauth2client.client import flow_from_clientsecrets
@@ -44,7 +45,14 @@ def showGames():
     login_session['state'] = state
     genres = session.query(Genre).order_by(asc(Genre.name))
     games = session.query(Games).order_by(desc(Games.id)).limit(5)
-    return render_template('gaming.html', genres=genres, games=games, user_id=user_id, user_pic=user_pic, STATE=state)
+    return render_template(
+        'gaming.html',
+        genres=genres,
+        games=games,
+        user_id=user_id,
+        user_pic=user_pic,
+        STATE=state
+    )
 
 
 @app.route('/gconnect', methods=['POST'])
@@ -136,9 +144,14 @@ def gconnect():
     return output
 
 # User Helper Functions
+
+
 def createUser(login_session):
-    newUser = User(name=login_session['username'], 
-        email=login_session['email'], picture=login_session['picture'])
+    newUser = User(
+        name=login_session['username'],
+        email=login_session['email'],
+        picture=login_session['picture']
+    )
     session.add(newUser)
     session.commit()
     user = session.query(User).filter_by(email=login_session['email']).one()
@@ -165,8 +178,8 @@ def gdisconnect():
     print 'In gdisconnect access token is %s', access_token
     print 'User name is: '
     print login_session['username']
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session[
-        'access_token']
+    url = ('https://accounts.google.com/o/oauth2/revoke?token=%s' %
+           login_session['access_token'])
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
     print 'result is '
@@ -208,13 +221,17 @@ def newGamingGenre():
         user_pic = login_session['picture']
 
     if request.method == 'POST':
-        newGenre = Genre(name=request.form['name'], creator_id=user_id)
-        session.add(newGenre)
-        flash('New Genre %s Successfully Added' % newGenre.name)
-        session.commit()
+        # Restrict anonymous from creating content
+        if user_id != 0:
+            newGenre = Genre(name=request.form['name'], creator_id=user_id)
+            session.add(newGenre)
+            flash('New Genre %s Successfully Added' % newGenre.name)
+            session.commit()
+            return redirect(url_for('showGames'))
+        flash('Access denied.  You must be logged in to create content.')
         return redirect(url_for('showGames'))
-
-    return render_template('new_genre.html', user_id=user_id, user_pic=user_pic)
+    return render_template(
+        'new_genre.html', user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can edit a genre
@@ -230,14 +247,23 @@ def editGamingGenre(genre_id):
         Genre).filter_by(id=genre_id).one()
 
     if request.method == 'POST' and request.form['submit'] == 'Save':
-        if request.form['name']:
-            editedGenre.name = request.form['name']
-            flash('Genre Successfully Edited %s' % editedGenre.name)
-            return redirect(url_for('showGames'))
+        if editedGenre.creator_id == user_id:
+            if request.form['name']:
+                editedGenre.name = request.form['name']
+                flash('Genre Successfully Edited %s' % editedGenre.name)
+                return redirect(url_for('showGames'))
+        # If the user is not the creator, deny access.
+        flash('Access denied.  Genre %s Not Edited' % editedGenre.name)
+        return redirect(url_for('showGames'))
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGames'))
 
-    return render_template('edit_genre.html', genre=editedGenre, user_id=user_id, user_pic=user_pic)
+    return render_template(
+        'edit_genre.html',
+        genre=editedGenre,
+        user_id=user_id,
+        user_pic=user_pic
+    )
 
 
 # Authenticated users can delete a genre
@@ -253,15 +279,23 @@ def deleteGamingGenre(genre_id):
         Genre).filter_by(id=genre_id).one()
 
     if request.method == 'POST' and request.form['submit'] == 'Delete':
-        session.delete(genreToDelete)
-        flash('%s Successfully Deleted' % genreToDelete.name)
-        session.commit()
+        if genreToDelete.creator_id == user_id:
+            session.delete(genreToDelete)
+            flash('%s Successfully Deleted' % genreToDelete.name)
+            session.commit()
+            return redirect(url_for('showGames'))
+        # If the user is not the creator, deny access.
+        flash('Access denied.  Genre %s Not Deleted' % genreToDelete.name)
         return redirect(url_for('showGames'))
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGames'))
 
     return render_template(
-        'delete_genre.html', genre=genreToDelete, user_id=user_id, user_pic=user_pic)
+        'delete_genre.html',
+        genre=genreToDelete,
+        user_id=user_id,
+        user_pic=user_pic
+    )
 
 
 # Genre pages - available to all users
@@ -277,7 +311,7 @@ def showGamingGenre(genre_id):
     videoGames = session.query(Games).filter_by(genre_id=genre.id)
 
     return render_template(
-        'genre.html', genre=genre, videoGames=videoGames, 
+        'genre.html', genre=genre, videoGames=videoGames,
         genre_id=genre_id, user_id=user_id, user_pic=user_pic)
 
 
@@ -293,18 +327,34 @@ def newGenreGame(genre_id):
     genre = session.query(Genre).filter_by(id=genre_id).one()
 
     if request.method == 'POST':
-        newVideoGame = Games(title=request.form['title'], description=request.form[
-            'description'], boxart=request.form['boxart'], genre_id=genre_id, creator_id=user_id)
-        session.add(newVideoGame)
-        session.commit()
-        flash("Video Game Added!")
-        return redirect(url_for('showGamingGenre', genre_id=genre_id))
-
-    return render_template('new_game.html', genre=genre, user_id=user_id, user_pic=user_pic)
+        if genre.creator_id == user_id:
+            newVideoGame = Games(
+                title=request.form['title'],
+                description=request.form['description'],
+                boxart=request.form['boxart'],
+                genre_id=genre_id,
+                creator_id=user_id
+            )
+            session.add(newVideoGame)
+            session.commit()
+            flash("Video Game Added!")
+            return redirect(url_for('showGamingGenre', genre_id=genre_id))
+        # If the user is not the creator of the genre, deny access.
+        flash('Access denied.  You cannot add games to Genre %s' % genre.name)
+        return redirect(url_for('showGames'))
+    return render_template(
+        'new_game.html',
+        genre=genre,
+        user_id=user_id,
+        user_pic=user_pic
+    )
 
 
 # Authenticated users can edit a game in a genre
-@app.route('/gaming/<int:genre_id>/<int:game_id>/edit', methods=['GET', 'POST'])
+@app.route(
+    '/gaming/<int:genre_id>/<int:game_id>/edit',
+    methods=['GET', 'POST']
+)
 def editGenreGame(genre_id, game_id):
     user_id = 0
     user_pic = ''
@@ -317,28 +367,37 @@ def editGenreGame(genre_id, game_id):
     genres = session.query(Genre).order_by(asc(Genre.name))
 
     if request.method == 'POST' and request.form['submit'] == 'Save':
-        if request.form['title']:
-            editedGame.title = request.form['title']
-        if request.form['description']:
-            editedGame.description = request.form['description']
-        if request.form['boxart']:
-            editedGame.boxart = request.form['boxart']
-        if request.form['genre']:
-            editedGame.genre_id = request.form['genre']
+        if editedGame.creator_id == user_id:
+            if request.form['title']:
+                editedGame.title = request.form['title']
+            if request.form['description']:
+                editedGame.description = request.form['description']
+            if request.form['boxart']:
+                editedGame.boxart = request.form['boxart']
+            if request.form['genre']:
+                editedGame.genre_id = request.form['genre']
 
-        session.add(editedGame)
-        session.commit()
-        flash('Video Game Successfully Edited')
+            session.add(editedGame)
+            session.commit()
+            flash('Video Game Successfully Edited')
+            return redirect(url_for('showGamingGenre', genre_id=genre_id))
+        # If the user is not the creator, deny access.
+        flash('Access denied.  You do not have permission to edit game %s' %
+              editedGame.title)
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
 
-    return render_template('edit_game.html', genres=genres, genre=genre, 
-        game_id=game_id, videoGame=editedGame, user_id=user_id, user_pic=user_pic)
+    return render_template('edit_game.html', genres=genres, genre=genre,
+                           game_id=game_id, videoGame=editedGame,
+                           user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can delete a game in a genre
-@app.route('/gaming/<int:genre_id>/<int:game_id>/delete', methods=['GET', 'POST'])
+@app.route(
+    '/gaming/<int:genre_id>/<int:game_id>/delete',
+    methods=['GET', 'POST']
+)
 def deleteGenreGame(genre_id, game_id):
     user_id = 0
     user_pic = ''
@@ -350,15 +409,24 @@ def deleteGenreGame(genre_id, game_id):
     gameToDelete = session.query(Games).filter_by(id=game_id).one()
 
     if request.method == 'POST' and request.form['submit'] == 'Delete':
-        session.delete(gameToDelete)
-        session.commit()
-        flash('Video Game Successfully Deleted')
+        if gameToDelete.creator_id == user_id:
+            session.delete(gameToDelete)
+            session.commit()
+            flash('Video Game Successfully Deleted')
+            return redirect(url_for('showGamingGenre', genre_id=genre_id))
+        # If the user is not the creator, deny access.
+        flash('Access denied.  You do not have permission to delete game %s' %
+              gameToDelete.title)
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
 
     return render_template(
-        'delete_game.html', genre=genre, videoGame=gameToDelete, user_id=user_id, user_pic=user_pic)
+        'delete_game.html',
+        genre=genre, videoGame=gameToDelete,
+        user_id=user_id,
+        user_pic=user_pic
+    )
 
 
 if __name__ == '__main__':
