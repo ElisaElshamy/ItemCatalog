@@ -1,17 +1,18 @@
 # Import necessary libraries and frameworks
-from flask import Flask, render_template, request, redirect, jsonify, url_for, flash
+import random
+import string
+import json
+import httplib2
+import requests
 from sqlalchemy import create_engine, asc, desc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, User, Genre, Games
+from flask import Flask, render_template, request, redirect, jsonify, url_for, flash
 from flask import session as login_session
-import random
-import string
+from flask import make_response
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
-import httplib2
-import json
-from flask import make_response
-import requests
+
 
 app = Flask(__name__)
 
@@ -39,11 +40,11 @@ def showGames():
 
     # Generates a random string as a anti-forgery state token
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
-                        for x in xrange(32))
+                    for x in xrange(32))
     login_session['state'] = state
     genres = session.query(Genre).order_by(asc(Genre.name))
     games = session.query(Games).order_by(desc(Games.id)).limit(5)
-    return render_template('gaming.html', genres=genres, games=games, user_id = user_id, user_pic=user_pic, STATE=state)
+    return render_template('gaming.html', genres=genres, games=games, user_id=user_id, user_pic=user_pic, STATE=state)
 
 
 @app.route('/gconnect', methods=['POST'])
@@ -121,7 +122,6 @@ def gconnect():
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
 
-
     # see if user exists, if it doesn't make a new one
     user_id = getUserID(data["email"])
     if not user_id:
@@ -136,11 +136,9 @@ def gconnect():
     return output
 
 # User Helper Functions
-
-
 def createUser(login_session):
-    newUser = User(name=login_session['username'], email=login_session[
-                   'email'], picture=login_session['picture'])
+    newUser = User(name=login_session['username'], 
+        email=login_session['email'], picture=login_session['picture'])
     session.add(newUser)
     session.commit()
     user = session.query(User).filter_by(email=login_session['email']).one()
@@ -167,7 +165,8 @@ def gdisconnect():
     print 'In gdisconnect access token is %s', access_token
     print 'User name is: '
     print login_session['username']
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session[
+        'access_token']
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
     print 'result is '
@@ -182,7 +181,7 @@ def gdisconnect():
         response = make_response(json.dumps('Successfully disconnected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
-        
+
     else:
         response = make_response(json.dumps(
             'Failed to revoke token for given user.', 400))
@@ -193,12 +192,10 @@ def gdisconnect():
 # JSON API
 @app.route('/gaming/<int:genre_id>/games/json')
 def gamingJSON(genre_id):
-    genre = session.query(Genre).filter_by(id=genre_id).one()
     games = session.query(Games).filter_by(
         genre_id=genre_id).all()
 
     return jsonify(VideoGames=[vg.serialize for vg in games])
-
 
 
 # Authenticated users can add new genres
@@ -217,7 +214,7 @@ def newGamingGenre():
         session.commit()
         return redirect(url_for('showGames'))
 
-    return render_template('new_genre.html', user_id = user_id, user_pic=user_pic)
+    return render_template('new_genre.html', user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can edit a genre
@@ -263,7 +260,8 @@ def deleteGamingGenre(genre_id):
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGames'))
 
-    return render_template('delete_genre.html', genre=genreToDelete, user_id=user_id, user_pic=user_pic)
+    return render_template(
+        'delete_genre.html', genre=genreToDelete, user_id=user_id, user_pic=user_pic)
 
 
 # Genre pages - available to all users
@@ -279,7 +277,8 @@ def showGamingGenre(genre_id):
     videoGames = session.query(Games).filter_by(genre_id=genre.id)
 
     return render_template(
-        'genre.html', genre=genre, videoGames=videoGames, genre_id=genre_id, user_id=user_id, user_pic=user_pic)
+        'genre.html', genre=genre, videoGames=videoGames, 
+        genre_id=genre_id, user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can add new game to a genre
@@ -295,7 +294,7 @@ def newGenreGame(genre_id):
 
     if request.method == 'POST':
         newVideoGame = Games(title=request.form['title'], description=request.form[
-            'description'], boxart=request.form['boxart'], genre_id=genre_id, creator_id = user_id)
+            'description'], boxart=request.form['boxart'], genre_id=genre_id, creator_id=user_id)
         session.add(newVideoGame)
         session.commit()
         flash("Video Game Added!")
@@ -333,8 +332,9 @@ def editGenreGame(genre_id, game_id):
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
-    
-    return render_template('edit_game.html', genres=genres, genre=genre, game_id=game_id, videoGame=editedGame, user_id=user_id, user_pic=user_pic)
+
+    return render_template('edit_game.html', genres=genres, genre=genre, 
+        game_id=game_id, videoGame=editedGame, user_id=user_id, user_pic=user_pic)
 
 
 # Authenticated users can delete a game in a genre
@@ -357,7 +357,8 @@ def deleteGenreGame(genre_id, game_id):
     elif request.method == 'POST' and request.form['submit'] == 'Cancel':
         return redirect(url_for('showGamingGenre', genre_id=genre_id))
 
-    return render_template('delete_game.html', genre=genre, videoGame=gameToDelete, user_id=user_id, user_pic=user_pic)
+    return render_template(
+        'delete_game.html', genre=genre, videoGame=gameToDelete, user_id=user_id, user_pic=user_pic)
 
 
 if __name__ == '__main__':

@@ -1,14 +1,6 @@
 {% extends "main.html" %}
 {% block content %}
-{% include "header.html" %}
-<!--
-	<div class="row banner main">
-		<div class="col-md-1"></div>
-		<div class="col-md-11 padding-none">
-			<h1>Video Games</h1>
-		</div>
-	</div>
--->
+	{% include "header.html" %}
 	
 	<div class="row">
 		<div class="col-md-1"></div>
@@ -40,7 +32,7 @@
 			{% endwith %}
 
 			{% for genre in genres %}
-	
+
 				<a href = "{{url_for('showGamingGenre', genre_id = genre.id)}}">
 					<h3 class="genre-name">{{genre.name}}</h3>
 				</a>
